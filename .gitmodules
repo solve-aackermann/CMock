@@ -6,3 +6,6 @@
 	path = vendor/c_exception
 	url = https://github.com/throwtheswitch/cexception.git
 	branch = master
+[submodule "vendor/cmocka"]
+	path = vendor/cmocka
+	url = git://git.cryptomilk.org/projects/cmocka.git

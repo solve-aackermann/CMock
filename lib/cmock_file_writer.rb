@@ -12,7 +12,7 @@ class CMockFileWriter
     @config = config
   end
 
-  def create_subdir(subdir)
+  def create_subdir(subdir, sourcedir)
     if !Dir.exists?("#{@config.mock_path}/")
       require 'fileutils'
       FileUtils.mkdir_p "#{@config.mock_path}/"
@@ -21,12 +21,16 @@ class CMockFileWriter
       require 'fileutils'
       FileUtils.mkdir_p "#{@config.mock_path}/#{subdir+'/' if subdir}"
     end
+    if sourcedir && !Dir.exists?("#{@config.mock_path}/#{subdir+'/' if subdir}#{sourcedir+'/' if sourcedir}")
+      require 'fileutils'
+      FileUtils.mkdir_p "#{@config.mock_path}/#{subdir+'/' if subdir}#{sourcedir+'/' if sourcedir}"
+    end
   end
 
-  def create_file(filename, subdir)
+  def create_file(filename, subdir, sourcedir)
     raise "Where's the block of data to create?" unless block_given?
-    full_file_name_temp = "#{@config.mock_path}/#{subdir+'/' if subdir}#{filename}.new"
-    full_file_name_done = "#{@config.mock_path}/#{subdir+'/' if subdir}#{filename}"
+    full_file_name_temp = "#{@config.mock_path}/#{subdir+'/' if subdir}#{sourcedir+'/' if sourcedir}#{filename}.new"
+    full_file_name_done = "#{@config.mock_path}/#{subdir+'/' if subdir}#{sourcedir+'/' if sourcedir}#{filename}"
     File.open(full_file_name_temp, 'w') do |file|
       yield(file, filename)
     end

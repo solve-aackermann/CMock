@@ -6,23 +6,37 @@
 
 [ "../config/production_environment",
   "cmock_header_parser",
-  "cmock_generator",
   "cmock_file_writer",
   "cmock_config",
-  "cmock_plugin_manager",
-  "cmock_generator_utils",
-  "cmock_unityhelper_parser"].each {|req| require "#{File.expand_path(File.dirname(__FILE__))}/#{req}"}
+  "cmock_plugin_manager"].each {|req| require "#{File.expand_path(File.dirname(__FILE__))}/#{req}"}
 
 class CMock
 
   def initialize(options=nil)
     cm_config      = CMockConfig.new(options)
-    cm_unityhelper = CMockUnityHelperParser.new(cm_config)
+    @framework     = cm_config.framework.to_s
+    
     cm_writer      = CMockFileWriter.new(cm_config)
-    cm_gen_utils   = CMockGeneratorUtils.new(cm_config, {:unity_helper => cm_unityhelper})
-    cm_gen_plugins = CMockPluginManager.new(cm_config, cm_gen_utils)
+    if @framework == "unity"
+        require "#{File.expand_path(File.dirname(__FILE__))}/cmock_helper_parser_unity"
+        require "#{File.expand_path(File.dirname(__FILE__))}/cmock_generator_utils_unity"
+        require "#{File.expand_path(File.dirname(__FILE__))}/cmock_generator_unity"
+        cm_unityhelper = CMockHelperParser_unity.new(cm_config)
+        cm_gen_utils   = CMockGeneratorUtils_unity.new(cm_config, {:unity_helper => cm_unityhelper})
+        cm_gen_plugins = CMockPluginManager.new(cm_config, cm_gen_utils)
+        @cm_generator  = CMockGenerator_unity.new(cm_config, cm_writer, cm_gen_utils, cm_gen_plugins)
+    elsif @framework == "cmocka"
+        require "#{File.expand_path(File.dirname(__FILE__))}/cmock_helper_parser_cmocka"
+        require "#{File.expand_path(File.dirname(__FILE__))}/cmock_generator_utils_cmocka"
+        require "#{File.expand_path(File.dirname(__FILE__))}/cmock_generator_cmocka"
+        cm_unityhelper = CMockHelperParser_cmocka.new(cm_config)
+        cm_gen_utils   = CMockGeneratorUtils_cmocka.new(cm_config, {:cmocka_helper => cm_unityhelper})
+        cm_gen_plugins = CMockPluginManager.new(cm_config, cm_gen_utils)
+        @cm_generator  = CMockGenerator_cmocka.new(cm_config, cm_writer, cm_gen_utils, cm_gen_plugins)
+    else
+        raise "ERROR: unexpected framework '#{@framework}'"
+    end
     @cm_parser     = CMockHeaderParser.new(cm_config)
-    @cm_generator  = CMockGenerator.new(cm_config, cm_writer, cm_gen_utils, cm_gen_plugins)
     @silent        = (cm_config.verbosity < 2)
   end
 
@@ -36,8 +50,9 @@ class CMock
 
   def generate_mock(src)
     name = File.basename(src, '.h')
+    dir = File.dirname(src)
     puts "Creating mock for #{name}..." unless @silent
-    @cm_generator.create_mock(name, @cm_parser.parse(name, File.read(src)))
+    @cm_generator.create_mock(name, dir, @cm_parser.parse(name, File.read(src)))
   end
 end
 

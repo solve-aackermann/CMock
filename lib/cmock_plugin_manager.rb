@@ -10,17 +10,27 @@ class CMockPluginManager
   
   def initialize(config, utils)
     @plugins = []
-    plugins_to_load = [:expect, config.plugins].flatten.uniq.compact
+    @framework   = config.framework.to_s
+    
+    plugins_to_load = config.plugins.flatten.uniq.compact
     plugins_to_load.each do |plugin|
       plugin_name = plugin.to_s
       object_name = "CMockGeneratorPlugin" + camelize(plugin_name)
+      specificPlugin = "#{File.expand_path(File.dirname(__FILE__))}/cmock_generator_plugin_#{plugin_name.downcase}_#{@framework}.rb"
+      commonPlugin = "#{File.expand_path(File.dirname(__FILE__))}/cmock_generator_plugin_#{plugin_name.downcase}.rb"
       begin
         unless (Object.const_defined? object_name)
-          require "#{File.expand_path(File.dirname(__FILE__))}/cmock_generator_plugin_#{plugin_name.downcase}.rb"
+          if File.file?(specificPlugin)
+            puts "load specific plugin '#{plugin_name}' for '#{@framework}' (#{specificPlugin})" unless (config.verbosity < 3)
+            require specificPlugin
+          else
+            puts "load common plugin '#{plugin_name}' for '#{@framework}' (#{commonPlugin})" unless (config.verbosity < 3)
+            require commonPlugin
+          end
         end
         @plugins << eval("#{object_name}.new(config, utils)")
       rescue
-        raise "ERROR: CMock unable to load plugin '#{plugin_name}'"
+        raise "ERROR: CMock unable to load plugin '#{plugin_name}' for '#{@framework}'"
       end
     end
     @plugins.sort! {|a,b| a.priority <=> b.priority }
