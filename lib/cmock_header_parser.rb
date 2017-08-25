@@ -79,7 +79,7 @@ class CMockHeaderParser
     # enums, unions, structs, and typedefs can all contain things (e.g. function pointers) that parse like function prototypes, so yank them
     # forward declared structs are removed before struct definitions so they don't mess up real thing later. we leave structs keywords in function prototypes
     source.gsub!(/^[\w\s]*struct[^;\{\}\(\)]+;/m, '')                                      # remove forward declared structs
-    source.gsub!(/^[\w\s]*(enum|union|struct|typepdef)[\w\s]*\{[^\}]+\}[\w\s\*\,]*;/m, '') # remove struct, union, and enum definitions and typedefs with braces
+    source.gsub!(/^[\w\s]*(enum|union|struct|typedef)[\w\s]*\{[^\}]+\}[\w\s\*\,]*;/m, '')  # remove struct, union, and enum definitions and typedefs with braces
     source.gsub!(/(\W)(?:register|auto|static|restrict)(\W)/, '\1\2')                      # remove problem keywords
     source.gsub!(/\s*=\s*['"a-zA-Z0-9_\.]+\s*/, '')                                        # remove default value statements from argument lists
     source.gsub!(/^(?:[\w\s]*\W)?typedef\W[^;]*/m, '')                                     # remove typedef statements
@@ -94,7 +94,14 @@ class CMockHeaderParser
     end
 
     # remove nested pairs of braces because no function declarations will be inside of them (leave outer pair for function definition detection)
-    source.gsub!(/\{([^\{\}]*|\g<0>)*\}/m, '{ }')
+    if (RUBY_VERSION.split('.')[0].to_i > 1)
+      #we assign a string first because (no joke) if Ruby 1.9.3 sees this line as a regex, it will crash.
+      r = "\\{([^\\{\\}]*|\\g<0>)*\\}"
+      source.gsub!(/#{r}/m, '{ }')
+    else
+      while source.gsub!(/\{[^\{\}]*\{[^\{\}]*\}[^\{\}]*\}/m, '{ }')
+      end
+    end
 
     # remove function definitions by stripping off the arguments right now
     source.gsub!(/\([^\)]*\)\s*\{[^\}]*\}/m, ";")
